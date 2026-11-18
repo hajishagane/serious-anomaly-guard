@@ -4,19 +4,25 @@ import sqlite3
 from pathlib import Path
 from datetime import datetime
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from sqlalchemy.exc import OperationalError
 import pandas as pd
 
 from database import init_db, SessionLocal, Transaction
 from features import compute_velocity_features, FEATURE_NAMES
+from dashboard import DASHBOARD_HTML
 
 app = FastAPI(title="Anomaly Guard", version="1.0.0")
 
-# Initialize database tables on startup
-@app.on_event("startup")
-def startup_event():
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     init_db()
+    yield
+
+app.router.lifespan_context = lifespan
 
 # Load model artifact
 MODEL_PATH = Path(os.getenv("MODEL_PATH", "model.joblib"))
@@ -86,12 +92,8 @@ def score_transaction(payload: TransactionInput):
 
         # 3. Score model or fallback
         if MODEL is not None:
-            # Need to update FEATURE_NAMES if it only had 6
-            cols = ["amount_kes", "time_since_last_tx", "tx_count_15min", "tx_count_24h", 
-                    "hour_of_day", "is_weekend", "orig_balance_zeroed", 
-                    "amount_over_orig_balance", "balance_change_orig", "dest_balance_after"]
-            X_input = pd.DataFrame([features], columns=cols)
-            prob = float(MODEL.predict_proba(X_input)[0][1])
+            X_input = pd.DataFrame([features], columns=FEATURE_NAMES)
+            prob = float(MODEL.predict_proba(X_input.values)[0][1])
             verdict = int(prob >= THRESHOLD)
             score = prob
         else:
@@ -146,5 +148,52 @@ def score_transaction(payload: TransactionInput):
     except Exception as e:
         session.rollback()
         raise HTTPException(status_code=500, detail=f"Internal scoring error: {e}")
+    finally:
+        session.close()
+
+@app.get("/", response_class=HTMLResponse)
+def dashboard():
+    """Serve the fraud monitoring dashboard UI."""
+    return HTMLResponse(content=DASHBOARD_HTML)
+
+@app.get("/stats")
+def stats():
+    session = SessionLocal()
+    try:
+        total = session.query(Transaction).count()
+        flagged = session.query(Transaction).filter(Transaction.verdict == 1).count()
+        return {
+            "total_scored": total,
+            "flagged_fraud": flagged,
+            "flag_rate": (flagged / total) if total else 0.0,
+            "model_loaded": MODEL is not None,
+        }
+    finally:
+        session.close()
+
+@app.get("/transactions")
+def list_transactions(limit: int = 50):
+    session = SessionLocal()
+    try:
+        rows = (
+            session.query(Transaction)
+            .order_by(Transaction.timestamp.desc())
+            .limit(min(limit, 200))
+            .all()
+        )
+        return {
+            "transactions": [
+                {
+                    "tx_id": r.tx_id,
+                    "origin_account_id": r.origin_account_id,
+                    "vendor_hash": r.vendor_hash,
+                    "amount_kes": r.amount_kes,
+                    "timestamp": r.timestamp.isoformat() if r.timestamp else None,
+                    "verdict": r.verdict,
+                    "score": r.score,
+                }
+                for r in rows
+            ]
+        }
     finally:
         session.close()
