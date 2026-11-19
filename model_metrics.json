@@ -1,0 +1,49 @@
+{
+  "available": true,
+  "dataset": "PaySim Mobile Money (Temporal Holdout: steps 601-744)",
+  "eval_samples": 21600,
+  "fraud_samples": 1600,
+  "active_model": "XGBClassifier",
+  "threshold": 0.75,
+  "models": [
+    {
+      "name": "Anomaly Guard XGBoost (cutoff=0.75)",
+      "f1": 0.8487,
+      "precision": 0.954,
+      "recall": 0.7644,
+      "fpr": 0.00295,
+      "confusion_matrix": {
+        "tn": 19941,
+        "fp": 59,
+        "fn": 377,
+        "tp": 1223
+      }
+    },
+    {
+      "name": "Isolation Forest (Unsupervised Baseline)",
+      "f1": 0.5261,
+      "precision": 0.5613,
+      "recall": 0.495,
+      "fpr": 0.03095,
+      "confusion_matrix": {
+        "tn": 19381,
+        "fp": 619,
+        "fn": 808,
+        "tp": 792
+      }
+    },
+    {
+      "name": "Legacy Static Rule (> KES 50,000)",
+      "f1": 0.2309,
+      "precision": 0.1328,
+      "recall": 0.885,
+      "fpr": 0.4624,
+      "confusion_matrix": {
+        "tn": 10752,
+        "fp": 9248,
+        "fn": 184,
+        "tp": 1416
+      }
+    }
+  ]
+}
