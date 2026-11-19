@@ -32,6 +32,7 @@ MODEL_PATH = Path(os.getenv("MODEL_PATH", "model.joblib"))
 METRICS_PATH = Path(os.getenv("METRICS_PATH", "model_metrics.json"))
 SOC_ADMIN_PIN = os.getenv("SOC_ADMIN_PIN", "2026")
 B2B_API_KEY = os.getenv("API_KEY", "").strip()
+ENFORCE_API_KEY = os.getenv("ENFORCE_API_KEY", "false").lower() == "true"
 STATIC_RULE_LIMIT_KES = 50000.0
 
 MODEL = None
@@ -111,7 +112,7 @@ def verify_admin_pin(x_admin_token: Optional[str], body_pin: Optional[str] = Non
 
 
 def verify_b2b_api_key(x_api_key: Optional[str]):
-    if B2B_API_KEY and (x_api_key or "").strip() != B2B_API_KEY:
+    if ENFORCE_API_KEY and B2B_API_KEY and (x_api_key or "").strip() != B2B_API_KEY:
         raise HTTPException(status_code=401, detail="Invalid or missing X-API-Key header.")
 
 
@@ -145,7 +146,7 @@ def health_check():
         "database": "connected",
         "threshold": THRESHOLD,
         "static_rule_limit_kes": STATIC_RULE_LIMIT_KES,
-        "b2b_api_key_enforced": bool(B2B_API_KEY),
+        "b2b_api_key_enforced": bool(ENFORCE_API_KEY and B2B_API_KEY),
     }
 
 
