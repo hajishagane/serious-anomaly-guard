@@ -9,8 +9,8 @@ def compute_velocity_features(df):
     df["is_weekend"] = (df["day_of_week"] >= 5).astype(int)
     df = df.sort_values(["origin_account_id", "step"]).reset_index(drop=True)
     df["time_since_last_tx"] = df.groupby("origin_account_id")["step"].diff().fillna(0.0) * 60.0
-    df["tx_count_1h"] = df.groupby("origin_account_id")["step"].transform(lambda x: x.rolling(window=6, min_periods=1).count()).fillna(0).astype(int)
-    df["tx_count_24h"] = df.groupby("origin_account_id")["step"].transform(lambda x: x.rolling(window=144, min_periods=1).count()).fillna(0).astype(int)
+    df["tx_count_1h"] = df.groupby("origin_account_id")["step"].transform(lambda x: x.rolling(window=6, min_periods=1).count() - 1).fillna(0).astype(int)
+    df["tx_count_24h"] = df.groupby("origin_account_id")["step"].transform(lambda x: x.rolling(window=144, min_periods=1).count() - 1).fillna(0).astype(int)
     
     def compute_avg_30d(group):
         amounts = group["amount_kes"].values
@@ -28,7 +28,7 @@ def compute_velocity_features(df):
     df["dest_is_new"] = (df["step"] == dest_counts).astype(int)
     
     if "oldbalanceOrg" in df.columns and "newbalanceOrig" in df.columns:
-        df["orig_balance_zeroed"] = (df["oldbalanceOrg"] == 0).astype(int)
+        df["orig_balance_zeroed"] = ((df["oldbalanceOrg"] > 0) & (df["newbalanceOrig"] == 0)).astype(int)
         df["amount_over_old_balance"] = (df["amount_kes"] > df["oldbalanceOrg"]).astype(int)
         df["balance_change_orig"] = df["oldbalanceOrg"] - df["newbalanceOrig"]
         df["dest_balance_after"] = df.get("newbalanceDest", 0.0)

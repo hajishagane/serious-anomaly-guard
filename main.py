@@ -229,7 +229,7 @@ def score_transaction(
         )
 
         # 2. Build canonical 10-feature ML vector
-        orig_balance_zeroed = int(payload.oldbalance_org == 0)
+        orig_balance_zeroed = int(payload.oldbalance_org > 0 and payload.newbalance_orig == 0)
         amount_over_orig_balance = float(payload.amount_kes > payload.oldbalance_org)
         balance_change_orig = payload.oldbalance_org - payload.newbalance_orig
         dest_balance_after = payload.newbalance_dest

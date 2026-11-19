@@ -81,6 +81,26 @@ class TestMainAPI(unittest.TestCase):
         self.assertEqual(len(txs["transactions"]), 1)
         self.assertEqual(txs["transactions"][0]["tx_id"], "ui-tx-1")
 
+    def test_normal_daytime_payment_cleared(self):
+        res = self.client.post(
+            "/score",
+            json={
+                "tx_id": "tx-normal-till-1",
+                "tx_type": "PAYMENT",
+                "origin_account_id": "KE_ACC_254712345678",
+                "vendor_hash": "TILL_NAIVAS_4021",
+                "amount_kes": 250.50,
+                "oldbalance_org": 12500.0,
+                "newbalance_orig": 12249.50,
+                "newbalance_dest": 45250.50,
+                "timestamp": "2026-11-20T10:30:00",
+            },
+        )
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["verdict"], 0)
+        self.assertLess(data["ml_score"], 0.30)
+
     def test_ledger_reconciliation_mismatch_flagged(self):
         res = self.client.post(
             "/score",

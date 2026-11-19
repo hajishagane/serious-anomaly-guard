@@ -29,17 +29,17 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     )
     df["tx_count_1h"] = (
         df.groupby("origin_account_id")["step"]
-        .transform(lambda x: x.rolling(window=6, min_periods=1).count())
+        .transform(lambda x: x.rolling(window=6, min_periods=1).count() - 1)
         .fillna(0)
         .astype(int)
     )
     df["tx_count_24h"] = (
         df.groupby("origin_account_id")["step"]
-        .transform(lambda x: x.rolling(window=144, min_periods=1).count())
+        .transform(lambda x: x.rolling(window=144, min_periods=1).count() - 1)
         .fillna(0)
         .astype(int)
     )
-    df["orig_balance_zeroed"] = (df["oldbalanceOrg"] == 0).astype(int)
+    df["orig_balance_zeroed"] = ((df["oldbalanceOrg"] > 0) & (df["newbalanceOrig"] == 0)).astype(int)
     df["amount_over_old_balance"] = (df["amount_kes"] > df["oldbalanceOrg"]).astype(int)
     df["balance_change_orig"] = df["oldbalanceOrg"] - df["newbalanceOrig"]
     df["dest_balance_after"] = df["newbalanceDest"].fillna(0.0)
